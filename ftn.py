@@ -1,6 +1,7 @@
 # Reference : https://youtu.be/Wv0PSs0dmVI
 import cv2
 import numpy as np
+import time
 
 
 def stackImages(scale, imgArray):
@@ -50,3 +51,23 @@ def stackImages(scale, imgArray):
         axisVer = axisHor
 
     return axisVer
+
+
+def videoText(img, f, base, prev, sRun, sFPS):
+    f += 1
+    currTime = time.time()
+    runTime  = currTime - base
+    timeDiff = currTime - prev
+
+    sRun = "Runtime : %d" % runTime
+
+    if (timeDiff > 0.3):
+        fps = f / timeDiff
+        sFPS = "FPS : %3.1f" % fps
+        f = 0
+        prev = currTime
+
+    cv2.putText(img, sRun, (5, 20), cv2.FONT_HERSHEY_PLAIN, 1.3, (255, 0, 0), 2)
+    cv2.putText(img, sFPS, (5, 40), cv2.FONT_HERSHEY_PLAIN, 1.3, (255, 0, 0), 2)
+
+    return f, prev, sFPS
