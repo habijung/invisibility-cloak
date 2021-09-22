@@ -1,7 +1,6 @@
 # Reference : https://youtu.be/Wv0PSs0dmVI
 import cv2
 import numpy as np
-from numpy.lib.function_base import interp
 
 
 def stackImages(scale, imgArray):
