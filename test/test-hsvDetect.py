@@ -1,11 +1,17 @@
 import cv2
 import numpy as np
-import ftn
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from module import ftn
+
+
+
+src = "../car-lime.jpg"
 
 def onChange(pos):
     pass
-
-src = "car-lime.jpg"
 
 
 ''' Create HSV Trackbar '''

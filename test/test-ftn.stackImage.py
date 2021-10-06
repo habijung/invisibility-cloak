@@ -1,9 +1,14 @@
 import cv2
 import numpy as np
-import ftn
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from module  import ftn
 
 
-path = "car-lime.jpg"
+
+path = "../car-lime.jpg"
 img = cv2.imread(path)
 kernel = np.ones((5, 5), np.uint8)
 
