@@ -1,10 +1,10 @@
-## ver1.py
+## v1.1.py
 ## Import statements (libraries)
 import sys
 import time
 import cv2
 import numpy as np
-import ftn
+from module import ftn
 
 
 ## Functions
@@ -12,16 +12,18 @@ def init():
     pyVersion = ""
 
     for i in range(3):
-        if (i != 2):
-            pyVersion += (str(sys.version_info[i]) + ".")
+        pyVersion += (str(sys.version_info[i]))
 
-    print("\n================================================")
-    print("==                                            ==")
-    print("==         Invisible Cloak Project            ==")
-    print("==         Python Version : " + pyVersion + "              ==")
-    print("==         OpenCV Version : " + cv2.__version__ + "             ==")
-    print("==                                            ==")
-    print("================================================\n")
+        if (i != 2):
+            pyVersion += "."
+
+    print("\n=====================================================")
+    print("==                                                 ==")
+    print("==         Invisible Cloak Project v1.1            ==")
+    print("==         Python Version : " + pyVersion + "                  ==")
+    print("==         OpenCV Version : " + cv2.__version__ + "                  ==")
+    print("==                                                 ==")
+    print("=====================================================\n")
 
 
 def main(argv):
@@ -41,6 +43,8 @@ def main(argv):
 
     ## Video open
     video = cv2.VideoCapture(camDevice)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (640, 480))
     time.sleep(3)
 
     for i in range(30):
@@ -107,10 +111,14 @@ def main(argv):
 
             # Only display the image if it is not empty
             if ret:
+
                 frame, prevTime, strFPS = ftn.videoText(imgStack1, frame, baseTime, prevTime, strRun, strFPS)
                 frame, prevTime, strFPS = ftn.videoText(imgStack2, frame, baseTime, prevTime, strRun, strFPS)
                 cv2.imshow("Result1", imgStack1)
                 cv2.imshow("Result2", imgStack2)
+
+                out.write(imgResult)
+
 
             # If it is empty abort
             else:
@@ -129,16 +137,16 @@ def main(argv):
                     ret, background = video.read()
 
                 background = np.flip(background, axis=1)
+
         
         video.release()
+        out.release()
         cv2.destroyAllWindows()
 
     # If video.isOpened == false
     else:
         print("Failed to open capture device.")
     
-
-
 
 
 
