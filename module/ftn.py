@@ -71,3 +71,7 @@ def videoText(img, f, base, prev, sRun, sFPS):
     cv2.putText(img, sFPS, (5, 40), cv2.FONT_HERSHEY_PLAIN, 1.3, (255, 0, 0), 2)
 
     return f, prev, sFPS
+
+
+def videoTitle(img, sTitle):
+    cv2.putText(img, sTitle, (5, 100), cv2.FONT_HERSHEY_PLAIN, 1.3, (0, 0, 0), 2)
