@@ -23,7 +23,7 @@ Graduation Project in 2021 Fall Semester @UNIST
 | Package        | Version    |
 | :------        | :------    |
 | anaconda (x64) | 4.10.3     |
-| cuda           | 10.1.243   |
+| cuda           | 10.2.89    |
 | matplotlib     | 3.4.2      |
 | numpy          | 1.20.3     |
 | opencv         | 4.5.3      |
