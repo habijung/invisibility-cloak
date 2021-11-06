@@ -4,7 +4,7 @@ import sys
 import time
 import cv2
 import numpy as np
-from module import ftn
+from modules import ftn
 
 
 ## Functions
