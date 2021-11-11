@@ -3,32 +3,32 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(__file__, '..')))
 
 import argparse
-import os
+import copy
 import cv2
 import glob
-import copy
-import numpy as np
-import torch
 import imageio
-from PIL import Image
+import numpy as np
+import os
 import scipy.ndimage
-from skimage.feature import canny
+import torch
 import torchvision.transforms.functional as F
+from PIL import Image
+from skimage.feature import canny
 
 # Custom
-import warnings
-import skimage.io
-import skimage.util
 import edgeconnect.utils
 import PIL.ImageOps
 import shutil
-
-# EdgeConnect
-from edgeconnect.networks import EdgeGenerator_
+import skimage.io
+import skimage.util
+import warnings
 
 # RAFT
 from RAFT import utils
 from RAFT import RAFT
+
+# EdgeConnect
+from edgeconnect.networks import EdgeGenerator_
 
 # tool
 from tool.get_flowNN import get_flowNN
@@ -41,6 +41,7 @@ import utils.region_fill as rf
 from utils.Poisson_blend import Poisson_blend
 from utils.Poisson_blend_img import Poisson_blend_img
 from utils.common_utils import flow_edge
+
 
 def to_tensor(img):
     img = Image.fromarray(img)
@@ -109,15 +110,15 @@ def calculate_flow(args, model, video, mode):
     Flow = np.empty(((imgH, imgW, 2, 0)), dtype=np.float32)
 
     # If already exist flow, load and return.
-    if os.path.isdir(os.path.join(args.outroot, 'flow', mode + '_flo')):
-        for flow_name in sorted(glob.glob(os.path.join(args.outroot, 'flow', mode + '_flo', '*.flo'))):
+    if os.path.isdir(os.path.join(args.outroot, '1_flow', mode + '_flo')):
+        for flow_name in sorted(glob.glob(os.path.join(args.outroot, '1_flow', mode + '_flo', '*.flo'))):
             print("Loading {0}".format(flow_name), '\r', end='')
             flow = utils.frame_utils.readFlow(flow_name)
             Flow = np.concatenate((Flow, flow[..., None]), axis=-1)
         return Flow
 
-    create_dir(os.path.join(args.outroot, 'flow', mode + '_flo'))
-    create_dir(os.path.join(args.outroot, 'flow', mode + '_png'))
+    create_dir(os.path.join(args.outroot, '1_flow', mode + '_flo'))
+    create_dir(os.path.join(args.outroot, '1_flow', mode + '_png'))
     flow_gif = []
 
     with torch.no_grad():
@@ -143,13 +144,14 @@ def calculate_flow(args, model, video, mode):
             flow_img = Image.fromarray(flow_img)
 
             # Saves the flow and flow_img.
-            flow_img.save(os.path.join(args.outroot, 'flow', mode + '_png', '%05d.png'%i))
-            utils.frame_utils.writeFlow(os.path.join(args.outroot, 'flow', mode + '_flo', '%05d.flo'%i), flow)
+            flow_img.save(os.path.join(args.outroot, '1_flow', mode + '_png', '%05d.png'%i))
+            utils.frame_utils.writeFlow(os.path.join(args.outroot, '1_flow', mode + '_flo', '%05d.flo'%i), flow)
 
-            # Save image to gif
-            flow_gif.append(imageio.imread(os.path.join(args.outroot, 'flow', mode + '_png', '%05d.png' % i)))
+            # Convert image to gif
+            flow_gif.append(imageio.imread(os.path.join(args.outroot, '1_flow', mode + '_png', '%05d.png' % i)))
 
-        imageio.mimsave(os.path.join(args.outroot, 'process', '1_flow_' + mode + '.gif'), flow_gif, format='gif', fps=20)
+        # Save gif.
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '1_flow_' + mode + '.gif'), flow_gif, format='gif', fps=20)
 
     return Flow
 
@@ -163,15 +165,23 @@ def edge_completion(args, EdgeGenerator, corrFlow, flow_mask, mode):
 
     imgH, imgW, _, nFrame = corrFlow.shape
     Edge = np.empty(((imgH, imgW, 0)), dtype=np.float32)
+    
+    # If already exist edge, load and return.
+    if os.path.isdir(os.path.join(args.outroot, '3_edge_comp', mode + '_npy')):
+        for edge_name in sorted(glob.glob(os.path.join(args.outroot, '3_edge_comp', mode + '_npy', '*.npy'))):
+            print("Loading {0}".format(edge_name), '\r', end='')
+            edge = np.load(edge_name)
+            Edge = np.concatenate((Edge, edge[..., None]), axis=-1)
+        return Edge
 
-    # If already exist image, don't save.
-    create_dir(os.path.join(args.outroot, 'edge', 'canny_' + mode))
-    create_dir(os.path.join(args.outroot, 'edge', 'edge_comp_' + mode))
+    create_dir(os.path.join(args.outroot, '2_edge_canny', mode + '_png'))
+    create_dir(os.path.join(args.outroot, '3_edge_comp', mode + '_npy'))
+    create_dir(os.path.join(args.outroot, '3_edge_comp', mode + '_png'))
     canny_gif = []
     edge_comp_gif = []
 
     if args.merge:
-        create_dir(os.path.join(args.outroot, 'edge', 'edge_comp_merge_' + mode))
+        create_dir(os.path.join(args.outroot, '3_edge_comp', mode + '_merge_png'))
         edge_merge_gif = []
 
     for i in range(nFrame):
@@ -185,47 +195,52 @@ def edge_completion(args, EdgeGenerator, corrFlow, flow_mask, mode):
         edge_completed = infer(args, EdgeGenerator, torch.device('cuda:0'), flow_img_gray, edge_corr, flow_mask_img)
         Edge = np.concatenate((Edge, edge_completed[..., None]), axis=-1)
         
-        # Extract canny edge
+        # Save the edge.
+        np.save(os.path.join(args.outroot, '3_edge_comp', mode + '_npy', '%05d' % i), edge_completed)
+        
+        # Extract and Save canny edge.
         img_canny = canny(flow_img_gray, sigma=2, mask=(1- flow_mask_img).astype(np.bool))
         img_canny = skimage.util.img_as_ubyte(img_canny)
         img_canny = cv2.bitwise_not(img_canny)
-        skimage.io.imsave(os.path.join(args.outroot, 'edge', 'canny_' + mode, '%05d.png' % i), img_canny)
+        skimage.io.imsave(os.path.join(args.outroot, '2_edge_canny', mode + '_png', '%05d.png' % i), img_canny)
 
-        # Extract edge connect completion
+        # Extract edge connect completion.
         img_edge = edge_completed
         img_edge = np.array(img_edge)
         img_edge = skimage.util.img_as_ubyte(img_edge)
         img_edge = cv2.bitwise_not(img_edge)
-        skimage.io.imsave(os.path.join(args.outroot, 'edge', 'edge_comp_' + mode, '%05d.png' % i), img_edge)
+        skimage.io.imsave(os.path.join(args.outroot, '3_edge_comp', mode + '_png', '%05d.png' % i), img_edge)
 
-        # Merge images with color edge
+        # Merge edges with color.
         if args.merge:
-            img_canny = Image.open(os.path.join(args.outroot, 'edge', 'canny_' + mode, '%05d.png' % i)).convert('RGB')
-            img_edge = Image.open(os.path.join(args.outroot, 'edge', 'edge_comp_' + mode, '%05d.png' % i)).convert('RGB')
+            img_canny = Image.open(os.path.join(args.outroot, '2_edge_canny', mode + '_png', '%05d.png' % i)).convert('RGB')
+            img_edge_comp = Image.open(os.path.join(args.outroot, '3_edge_comp', mode + '_png', '%05d.png' % i)).convert('RGB')
             
             color_black = (0, 0, 0)
             color_new = (255, 0, 0)
 
             for x in range(imgW):
                 for y in range(imgH):
-                    if img_edge.getpixel((x, y)) == color_black:
-                        img_edge.putpixel((x, y), color_new)
+                    if img_edge_comp.getpixel((x, y)) == color_black:
+                        img_edge_comp.putpixel((x, y), color_new)
                 
                     if img_canny.getpixel((x, y)) == color_black:
-                        img_edge.putpixel((x, y), color_black)
+                        img_edge_comp.putpixel((x, y), color_black)
 
-            img_edge.save(os.path.join(args.outroot, 'edge', 'edge_comp_merge_' + mode, '%05d.png' % i))
-            edge_merge_gif.append(imageio.imread(os.path.join(args.outroot, 'edge', 'edge_comp_merge_' + mode, '%05d.png' % i)))
+            # Save image and Convert image to gif.
+            img_edge_comp.save(os.path.join(args.outroot, '3_edge_comp', mode + '_merge_png', '%05d.png' % i))
+            edge_merge_gif.append(imageio.imread(os.path.join(args.outroot, '3_edge_comp', mode + '_merge_png', '%05d.png' % i)))
 
-        # Save image to gif
-        canny_gif.append(imageio.imread(os.path.join(args.outroot, 'edge', 'canny_' + mode, '%05d.png' % i)))
-        edge_comp_gif.append(imageio.imread(os.path.join(args.outroot, 'edge', 'edge_comp_' + mode, '%05d.png' % i)))
+        # Convert image to gif
+        canny_gif.append(imageio.imread(os.path.join(args.outroot, '2_edge_canny', mode + '_png', '%05d.png' % i)))
+        edge_comp_gif.append(imageio.imread(os.path.join(args.outroot, '3_edge_comp', mode + '_png', '%05d.png' % i)))
 
-    imageio.mimsave(os.path.join(args.outroot, 'process', '2_canny_' + mode + '.gif'), canny_gif, format='gif', fps=20)
-    imageio.mimsave(os.path.join(args.outroot, 'process', '3_edge_comp_' + mode + '.gif'), edge_comp_gif, format='gif', fps=20)
+    # Save gif.
+    imageio.mimsave(os.path.join(args.outroot, '0_process', '2_canny_' + mode + '.gif'), canny_gif, format='gif', fps=20)
+    imageio.mimsave(os.path.join(args.outroot, '0_process', '3_edge_comp_' + mode + '.gif'), edge_comp_gif, format='gif', fps=20)
     
     if args.merge:
-        imageio.mimsave(os.path.join(args.outroot, 'process', '3_edge_comp_merge_' + mode + '.gif'), edge_merge_gif, format='gif', fps=20)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '3_edge_comp_' + mode + '_merge.gif'), edge_merge_gif, format='gif', fps=20)
         
     return Edge
 
@@ -238,16 +253,17 @@ def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
 
     imgH, imgW, _, nFrame = corrFlow.shape
 
-    if os.path.isdir(os.path.join(args.outroot, 'flow_comp', mode + '_flo')):
+    # If already exist flow_comp, load and return.
+    if os.path.isdir(os.path.join(args.outroot, '4_flow_comp', mode + '_flo')):
         compFlow = np.empty(((imgH, imgW, 2, 0)), dtype=np.float32)
-        for flow_name in sorted(glob.glob(os.path.join(args.outroot, 'flow_comp', mode + '_flo', '*.flo'))):
+        for flow_name in sorted(glob.glob(os.path.join(args.outroot, '4_flow_comp', mode + '_flo', '*.flo'))):
             print("Loading {0}".format(flow_name), '\r', end='')
             flow = utils.frame_utils.readFlow(flow_name)
             compFlow = np.concatenate((compFlow, flow[..., None]), axis=-1)
         return compFlow
 
-    create_dir(os.path.join(args.outroot, 'flow_comp', mode + '_flo'))
-    create_dir(os.path.join(args.outroot, 'flow_comp', mode + '_png'))
+    create_dir(os.path.join(args.outroot, '4_flow_comp', mode + '_flo'))
+    create_dir(os.path.join(args.outroot, '4_flow_comp', mode + '_png'))
     flow_comp_gif = []
 
     compFlow = np.zeros(((imgH, imgW, 2, nFrame)), dtype=np.float32)
@@ -288,13 +304,14 @@ def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
         flow_img = Image.fromarray(flow_img)
 
         # Saves the flow and flow_img.
-        flow_img.save(os.path.join(args.outroot, 'flow_comp', mode + '_png', '%05d.png'%i))
-        utils.frame_utils.writeFlow(os.path.join(args.outroot, 'flow_comp', mode + '_flo', '%05d.flo'%i), compFlow[:, :, :, i])
+        flow_img.save(os.path.join(args.outroot, '4_flow_comp', mode + '_png', '%05d.png'%i))
+        utils.frame_utils.writeFlow(os.path.join(args.outroot, '4_flow_comp', mode + '_flo', '%05d.flo'%i), compFlow[:, :, :, i])
 
-        # Save image to gif
-        flow_comp_gif.append(imageio.imread(os.path.join(args.outroot, 'flow_comp', mode + '_png', '%05d.png' % i)))
+        # Convert image to gif.
+        flow_comp_gif.append(imageio.imread(os.path.join(args.outroot, '4_flow_comp', mode + '_png', '%05d.png' % i)))
 
-    imageio.mimsave(os.path.join(args.outroot, 'process', '4_flow_comp_' + mode + '.gif'), flow_comp_gif, format='gif', fps=20)
+    # Save gif.
+    imageio.mimsave(os.path.join(args.outroot, '0_process', '4_flow_comp_' + mode + '.gif'), flow_comp_gif, format='gif', fps=20)
 
     return compFlow
 
@@ -372,7 +389,7 @@ def video_completion(args):
     videoFlowB = complete_flow(args, corrFlowB, flow_mask, 'backward', FlowB_edge)
     print('\nFinish flow completion.')
     
-    return
+    #return
     iter = 0
     mask_tofill = mask
     video_comp = video
@@ -382,7 +399,7 @@ def video_completion(args):
 
     # We iteratively complete the video.
     while(np.sum(mask_tofill) > 0):
-        create_dir(os.path.join(args.outroot, 'frame_comp_' + str(iter)))
+        create_dir(os.path.join(args.outroot, '5_frame_comp_' + str(iter)))
 
         # Color propagation.
         video_comp, mask_tofill, _ = get_flowNN(args,
@@ -398,7 +415,7 @@ def video_completion(args):
             img = video_comp[:, :, :, i] * 255
             # Green indicates the regions that are not filled yet.
             img[mask_tofill[:, :, i]] = [0, 255, 0]
-            cv2.imwrite(os.path.join(args.outroot, 'frame_comp_' + str(iter), '%05d.png'%i), img)
+            cv2.imwrite(os.path.join(args.outroot, '5_frame_comp_' + str(iter), '%05d.png'%i), img)
 
         # video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
         # imageio.mimwrite(os.path.join(args.outroot, 'frame_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=12, quality=8, macro_block_size=1)
@@ -406,13 +423,13 @@ def video_completion(args):
         mask_tofill, video_comp = spatial_inpaint(deepfill, mask_tofill, video_comp)
         iter += 1
 
-    create_dir(os.path.join(args.outroot, 'frame_comp_' + 'final'))
+    create_dir(os.path.join(args.outroot, '5_frame_comp_' + 'final'))
     video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
     for i in range(nFrame):
         img = video_comp[:, :, :, i] * 255
-        cv2.imwrite(os.path.join(args.outroot, 'frame_comp_' + 'final', '%05d.png'%i), img)
-        imageio.mimwrite(os.path.join(args.outroot, 'frame_comp_' + 'final', 'final.mp4'), video_comp_, fps=12, quality=8, macro_block_size=1)
-        # imageio.mimsave(os.path.join(args.outroot, 'frame_comp_' + 'final', 'final.gif'), video_comp_, format='gif', fps=12)
+        cv2.imwrite(os.path.join(args.outroot, '5_frame_comp_' + 'final', '%05d.png'%i), img)
+        imageio.mimwrite(os.path.join(args.outroot, '5_frame_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_frame_comp_final.gif'), video_comp_, format='gif', fps=20)
 
 
 def video_completion_seamless(args):
@@ -523,7 +540,7 @@ def video_completion_seamless(args):
 
     # We iteratively complete the video.
     while(np.sum(mask) > 0):
-        create_dir(os.path.join(args.outroot, 'frame_seamless_comp_' + str(iter)))
+        create_dir(os.path.join(args.outroot, '5_frame_seamless_comp_' + str(iter)))
 
         # Gradient propagation.
         gradient_x_filled, gradient_y_filled, mask_gradient = \
@@ -566,7 +583,7 @@ def video_completion_seamless(args):
             else:
                 frameBlend_ = video_comp[:, :, :, indFrame]
 
-            cv2.imwrite(os.path.join(args.outroot, 'frame_seamless_comp_' + str(iter), '%05d.png'%indFrame), frameBlend_ * 255.)
+            cv2.imwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + str(iter), '%05d.png'%indFrame), frameBlend_ * 255.)
 
         # video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
         # imageio.mimwrite(os.path.join(args.outroot, 'frame_seamless_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=12, quality=8, macro_block_size=1)
@@ -585,13 +602,13 @@ def video_completion_seamless(args):
             gradient_x_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
             gradient_y_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
 
-    create_dir(os.path.join(args.outroot, 'frame_seamless_comp_' + 'final'))
+    create_dir(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final'))
     video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
     for i in range(nFrame):
         img = video_comp[:, :, :, i] * 255
-        cv2.imwrite(os.path.join(args.outroot, 'frame_seamless_comp_' + 'final', '%05d.png'%i), img)
-        imageio.mimwrite(os.path.join(args.outroot, 'frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=12, quality=8, macro_block_size=1)
-        # imageio.mimsave(os.path.join(args.outroot, 'frame_seamless_comp_' + 'final', 'final.gif'), video_comp_, format='gif', fps=12)
+        cv2.imwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final', '%05d.png'%i), img)
+        imageio.mimwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_frame_seamless_comp_final.gif'), video_comp_, format='gif', fps=20)
 
 
 def args_list(args):
@@ -610,7 +627,6 @@ def args_list(args):
 
 
 def main(args):
-
     assert args.mode in ('object_removal', 'video_extrapolation'), (
         "Accepted modes: 'object_removal', 'video_extrapolation', but input is %s"
     ) % args.mode
@@ -621,14 +637,14 @@ def main(args):
     args.edge_guide = True
     args_list(args)
 
-    if args.clear:
+    if args.clean:
         shutil.rmtree(os.path.join(args.outroot))
 
-    if args.test:
-        create_dir(os.path.join(args.outroot, 'process'))
+    if args.run:
+        create_dir(os.path.join(args.outroot, '0_process'))
 
         if args.seamless:
-            args.outroot = 'D:/_data/tennis_result_seamless'
+            # args.outroot = 'D:/_data/tennis_result_seamless'
             video_completion_seamless(args)
         else:
             video_completion(args)
@@ -657,16 +673,16 @@ if __name__ == '__main__':
     parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
 
-    # Deepfill
-    parser.add_argument('--deepfill_model', default='./weight/imagenet_deepfill.pth', help="restore checkpoint")
-
     # Edge completion
     parser.add_argument('--edge_completion_model', default='./weight/edge_completion.pth', help="restore checkpoint")
 
+    # Deepfill
+    parser.add_argument('--deepfill_model', default='./weight/imagenet_deepfill.pth', help="restore checkpoint")
+
     # custom
-    parser.add_argument('--test', action='store_true', help='start video completion')
-    parser.add_argument('--merge', action='store_true', help='merge canny edge and completed edge')
-    parser.add_argument('--clear', action='store_true', help='clear result directory')
+    parser.add_argument('--run', action='store_true', help='run video completion')
+    parser.add_argument('--merge', action='store_true', help='merge image canny edge and completed edge')
+    parser.add_argument('--clean', action='store_true', help='clear result directory')
 
     args = parser.parse_args()
     

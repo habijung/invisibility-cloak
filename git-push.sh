@@ -29,7 +29,7 @@ else
 	COMMIT_MESSAGE=${1}
 fi
 
-echo "-> Your commit message : ${COMMIT_MESSAGE}"
+echo "-> Your commit message  : ${COMMIT_MESSAGE}"
 read -p "-> [ Yes = 1 | No = other ] : " COMMIT_FLAG
 
 if [ ${COMMIT_FLAG} -eq 1 ]; then
