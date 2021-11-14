@@ -24,14 +24,14 @@ Graduation Project in 2021 Fall Semester @UNIST
 | :------        | :------    |
 | anaconda (x64) | 4.10.3     |
 | cuda           | 10.2.89    |
-| matplotlib     | 3.4.2      |
-| numpy          | 1.20.3     |
-| opencv         | 4.5.3      |
+| matplotlib     | 3.4.3      |
+| numpy          | 1.21.4     |
+| opencv         | 4.5.4      |
 | os             | Windows 10 |
-| pip            | 21.2.4     |
-| python         | 3.8.11     |
+| pip            | 21.0.1     |
+| python         | 3.8.12     |
 | pytorch        | 1.6.0      |
-| scipy          | 1.7.1      |
+| scipy          | 1.6.2      |
 
 
 # Update History
@@ -58,4 +58,4 @@ Graduation Project in 2021 Fall Semester @UNIST
 <br>
 
 ---
-**Updated :** 2021-10-13 07:22
+**Updated :** 2021-11-14 23:45
