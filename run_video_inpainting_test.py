@@ -22,6 +22,7 @@ import shutil
 import skimage.io
 import skimage.util
 import warnings
+from logging import warning as warn
 
 # RAFT
 from RAFT import utils
@@ -43,6 +44,19 @@ from utils.Poisson_blend_img import Poisson_blend_img
 from utils.common_utils import flow_edge
 
 
+# Custom root warnings.
+def _precision_warn(p1, p2, extra=""):
+    msg = (
+        "Lossy conversion from {} to {}. {}"
+        "Convert image to {} prior to saving to suppress this warning."
+    )
+    warn(msg.format(p1, p2, extra, p2))
+
+def silence_imageio_warning(*args, **kwarge):
+    pass
+
+
+# FGVC functions
 def to_tensor(img):
     img = Image.fromarray(img)
     img_t = F.to_tensor(img).float()
@@ -513,20 +527,73 @@ def video_completion_seamless(args):
     # Prepare gradients
     gradient_x = np.empty(((imgH, imgW, 3, 0)), dtype=np.float32)
     gradient_y = np.empty(((imgH, imgW, 3, 0)), dtype=np.float32)
+    
+    # If already exist gradient, load and return
+    if os.path.isdir(os.path.join(args.outroot, '5_gradient')):
+        for grad_x_name in sorted(glob.glob(os.path.join(args.outroot, '5_gradient', 'x_npy', '*.npy'))):
+            print("Loading {0}".format(grad_x_name), '\r', end='')
+            indFrame = int(grad_x_name.split('.npy')[0][-5:])
+            grad_x = np.load(grad_x_name)
+            gradient_x = np.concatenate((gradient_x, grad_x.reshape(imgH, imgW, 3, 1)), axis=-1)
+            gradient_x[mask_dilated[:, :, indFrame], :, indFrame] = 0
+        
+        for grad_y_name in sorted(glob.glob(os.path.join(args.outroot, '5_gradient', 'y_npy', '*.npy'))):
+            print("Loading {0}".format(grad_y_name), '\r', end='')
+            indFrame = int(grad_y_name.split('.npy')[0][-5:])
+            grad_y = np.load(grad_y_name)
+            gradient_y = np.concatenate((gradient_y, grad_y.reshape(imgH, imgW, 3, 1)), axis=-1)
+            gradient_y[mask_dilated[:, :, indFrame], :, indFrame] = 0
+    
+    else:
+        create_dir(os.path.join(args.outroot, '5_gradient', 'x_npy'))
+        create_dir(os.path.join(args.outroot, '5_gradient', 'y_npy'))
+        create_dir(os.path.join(args.outroot, '5_gradient', 'x_png'))
+        create_dir(os.path.join(args.outroot, '5_gradient', 'y_png'))
+        grad_x_gif = []
+        grad_y_gif = []
 
-    for indFrame in range(nFrame):
-        img = video[:, :, :, indFrame]
-        img[mask[:, :, indFrame], :] = 0
-        img = cv2.inpaint((img * 255).astype(np.uint8), mask[:, :, indFrame].astype(np.uint8), 3, cv2.INPAINT_TELEA).astype(np.float32)  / 255.
+        for indFrame in range(nFrame):
+            print("Gradient frame {0:2d}".format(indFrame), '\r', end='')
+            img = video[:, :, :, indFrame]
+            img[mask[:, :, indFrame], :] = 0
+            img = cv2.inpaint((img * 255).astype(np.uint8), mask[:, :, indFrame].astype(np.uint8), 3, cv2.INPAINT_TELEA).astype(np.float32)  / 255.
 
-        gradient_x_ = np.concatenate((np.diff(img, axis=1), np.zeros((imgH, 1, 3), dtype=np.float32)), axis=1)
-        gradient_y_ = np.concatenate((np.diff(img, axis=0), np.zeros((1, imgW, 3), dtype=np.float32)), axis=0)
-        gradient_x = np.concatenate((gradient_x, gradient_x_.reshape(imgH, imgW, 3, 1)), axis=-1)
-        gradient_y = np.concatenate((gradient_y, gradient_y_.reshape(imgH, imgW, 3, 1)), axis=-1)
+            gradient_x_ = np.concatenate((np.diff(img, axis=1), np.zeros((imgH, 1, 3), dtype=np.float32)), axis=1)
+            gradient_y_ = np.concatenate((np.diff(img, axis=0), np.zeros((1, imgW, 3), dtype=np.float32)), axis=0)
+            gradient_x = np.concatenate((gradient_x, gradient_x_.reshape(imgH, imgW, 3, 1)), axis=-1)
+            gradient_y = np.concatenate((gradient_y, gradient_y_.reshape(imgH, imgW, 3, 1)), axis=-1)
+        
+            gradient_x[mask_dilated[:, :, indFrame], :, indFrame] = 0
+            gradient_y[mask_dilated[:, :, indFrame], :, indFrame] = 0
+            
+            # Save the gradient
+            np.save(os.path.join(args.outroot, '5_gradient', 'x_npy', '%05d' % indFrame), gradient_x_)
+            np.save(os.path.join(args.outroot, '5_gradient', 'y_npy', '%05d' % indFrame), gradient_y_)
+            
+            # Extract and Save gradient image
+            grad_x = gradient_x[:, :, 0, indFrame]
+            grad_y = gradient_y[:, :, 0, indFrame]
+            skimage.io.imsave(os.path.join(args.outroot, '5_gradient', 'x_png', '%05d.png' % indFrame), grad_x)
+            skimage.io.imsave(os.path.join(args.outroot, '5_gradient', 'y_png', '%05d.png' % indFrame), grad_y)
+            
+            # print("grad_x shape: {}, dimension: {}".format(grad_x.shape, grad_x.ndim))
+            # print("grad_y shape: {}, dimension: {}".format(grad_y.shape, grad_y.ndim))
+            
+            # Conveert image to gif.
+            grad_x_gif.append(imageio.imread(os.path.join(args.outroot, '5_gradient', 'x_png', '%05d.png' % indFrame)))
+            grad_y_gif.append(imageio.imread(os.path.join(args.outroot, '5_gradient', 'y_png', '%05d.png' % indFrame)))
+            
+        # Save gif.
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_gradient_' + 'x.gif'), grad_x_gif, format='gif', fps=20)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_gradient_' + 'y.gif'), grad_y_gif, format='gif', fps=20)
 
-        gradient_x[mask_dilated[:, :, indFrame], :, indFrame] = 0
-        gradient_y[mask_dilated[:, :, indFrame], :, indFrame] = 0
+    print('\nFinish gradient frame creation.')
 
+
+
+
+
+    return
 
     iter = 0
     mask_tofill = mask
@@ -633,6 +700,7 @@ def main(args):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
+    imageio.core.util._precision_warn = silence_imageio_warning
 
     args.edge_guide = True
     args_list(args)
