@@ -2,19 +2,19 @@
 
 Invisibility Cloak Project
 
-Computer Vision OpenCV with Deep Learning
-
-For this project, FGVC(Flow-edge Guided Video Completion) deep learning model was used for object removal.
+Computer Vision with OpenCV
 
 Graduation Project in 2021 Fall Semester @UNIST
 
+For this project, FGVC(Flow-edge Guided Video Completion) deep learning model was used for object removal.
 
-# Result v1.2
 
-### - [Youtube](https://www.youtube.com/watch?v=OUOLqkbNlR0)
+# Result
+
+### ✔ [Youtube](https://youtu.be/G4LIoRuKcas) | [Report (Kor)](/report/Invisibility_Cloak_Report.md)
 
 <div align="center">
-    <img src="img/v1.2-compare.gif">
+    <img src="/report/f250_compare.gif">
 </div>
 
 
@@ -58,4 +58,4 @@ Graduation Project in 2021 Fall Semester @UNIST
 <br>
 
 ---
-**Updated :** 2021-11-14 23:45
+**Updated :** 2021-11-20 22:42
