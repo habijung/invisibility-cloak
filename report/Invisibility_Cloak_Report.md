@@ -32,7 +32,7 @@
 
 
 
-![Overview](./f250_compare.gif)
+![Overview](./f250_compare-min.gif)
 
 
 
