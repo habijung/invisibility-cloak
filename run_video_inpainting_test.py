@@ -589,12 +589,6 @@ def video_completion_seamless(args):
 
     print('\nFinish gradient frame creation.')
 
-
-
-
-
-    return
-
     iter = 0
     mask_tofill = mask
     gradient_x_filled = gradient_x # corrupted gradient_x, mask_gradient indicates the missing gradient region
@@ -605,11 +599,13 @@ def video_completion_seamless(args):
     # Image inpainting model.
     deepfill = DeepFillv1(pretrained_model=args.deepfill_model, image_shape=[imgH, imgW])
 
+    
     # We iteratively complete the video.
     while(np.sum(mask) > 0):
-        create_dir(os.path.join(args.outroot, '5_frame_seamless_comp_' + str(iter)))
+        create_dir(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter)))
 
         # Gradient propagation.
+        
         gradient_x_filled, gradient_y_filled, mask_gradient = \
             get_flowNN_gradient(args,
                                 gradient_x_filled,
@@ -620,6 +616,16 @@ def video_completion_seamless(args):
                                 videoFlowB,
                                 None,
                                 None)
+        
+        create_dir(os.path.join(args.outroot, '6_gradient', 'x_png'))
+        create_dir(os.path.join(args.outroot, '6_gradient', 'y_png'))
+            
+        for indFrame in range(nFrame):
+            grad_x_filled = gradient_x_filled[:, :, 0, indFrame]
+            grad_y_filled = gradient_y_filled[:, :, 0, indFrame]
+            skimage.io.imsave(os.path.join(args.outroot, '6_gradient', 'x_png', '%05d.png' % indFrame), grad_x_filled)
+            skimage.io.imsave(os.path.join(args.outroot, '6_gradient', 'y_png', '%05d.png' % indFrame), grad_y_filled)
+
 
         # if there exist holes in mask, Poisson blending will fail. So I did this trick. I sacrifice some value. Another solution is to modify Poisson blending.
         for indFrame in range(nFrame):
@@ -631,11 +637,14 @@ def video_completion_seamless(args):
             print("Poisson blending frame {0:3d}".format(indFrame))
 
             if mask[:, :, indFrame].sum() > 0:
+                '''    
                 try:
                     frameBlend, UnfilledMask = Poisson_blend_img(video_comp[:, :, :, indFrame], gradient_x_filled[:, 0 : imgW - 1, :, indFrame], gradient_y_filled[0 : imgH - 1, :, :, indFrame], mask[:, :, indFrame], mask_gradient[:, :, indFrame])
-                    # UnfilledMask = scipy.ndimage.binary_fill_holes(UnfilledMask).astype(np.bool)
+                    UnfilledMask = scipy.ndimage.binary_fill_holes(UnfilledMask).astype(np.bool)
                 except:
                     frameBlend, UnfilledMask = video_comp[:, :, :, indFrame], mask[:, :, indFrame]
+                '''
+                frameBlend, UnfilledMask = video_comp[:, :, :, indFrame], mask[:, :, indFrame]
 
                 frameBlend = np.clip(frameBlend, 0, 1.0)
                 tmp = cv2.inpaint((frameBlend * 255).astype(np.uint8), UnfilledMask.astype(np.uint8), 3, cv2.INPAINT_TELEA).astype(np.float32) / 255.
@@ -650,12 +659,12 @@ def video_completion_seamless(args):
             else:
                 frameBlend_ = video_comp[:, :, :, indFrame]
 
-            cv2.imwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + str(iter), '%05d.png'%indFrame), frameBlend_ * 255.)
+            cv2.imwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), '%05d.png'%indFrame), frameBlend_ * 255.)
 
-        # video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
-        # imageio.mimwrite(os.path.join(args.outroot, 'frame_seamless_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=12, quality=8, macro_block_size=1)
-        # imageio.mimsave(os.path.join(args.outroot, 'frame_seamless_comp_' + str(iter), 'intermediate_{0}.gif'.format(str(iter))), video_comp_, format='gif', fps=12)
-
+        video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
+        # imageio.mimwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=20, quality=8, macro_block_size=1)
+        imageio.mimsave(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), 'intermediate_{0}.gif'.format(str(iter))), video_comp_, format='gif', fps=20)
+        return
         mask, video_comp = spatial_inpaint(deepfill, mask, video_comp)
         iter += 1
 
@@ -669,13 +678,13 @@ def video_completion_seamless(args):
             gradient_x_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
             gradient_y_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
 
-    create_dir(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final'))
+    create_dir(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final'))
     video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
     for i in range(nFrame):
         img = video_comp[:, :, :, i] * 255
-        cv2.imwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final', '%05d.png'%i), img)
-        imageio.mimwrite(os.path.join(args.outroot, '5_frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
-        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_frame_seamless_comp_final.gif'), video_comp_, format='gif', fps=20)
+        cv2.imwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final', '%05d.png' % i), img)
+        imageio.mimwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '6_frame_seamless_comp_final.gif'), video_comp_, format='gif', fps=20)
 
 
 def args_list(args):
