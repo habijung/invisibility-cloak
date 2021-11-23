@@ -126,9 +126,9 @@
         <th colspan="2">3. optical flow</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="/report/img/1_color.png" /></td>
-        <td colspan="2"><img src="/report/img/2_mask.png" /></td>
-        <td colspan="2"><img src="/report/img/3_optical_flow.png" /></td>
+        <td colspan="2"><img src="/report/img/1_color.png" width="250" /></td>
+        <td colspan="2"><img src="/report/img/2_mask.png" width="250" /></td>
+        <td colspan="2"><img src="/report/img/3_optical_flow.png" width="250" /></td>
     </tr>
     <tr align="center">
     	<th colspan="2">4. canny edge</th>
@@ -136,23 +136,23 @@
         <th colspan="2">6. flow completion</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="/report/img/4_canny_edge.png" /></td>
-        <td colspan="2"><img src="/report/img/5_edge_completion.png" /></td>
-        <td colspan="2"><img src="/report/img/6_flow_completion.png" /></td>
+        <td colspan="2"><img src="/report/img/4_canny_edge.png" width="250" /></td>
+        <td colspan="2"><img src="/report/img/5_edge_completion.png" width="250" /></td>
+        <td colspan="2"><img src="/report/img/6_flow_completion.png" width="250" /></td>
     </tr>
     <tr align="center">
     	<th colspan="3">7. gradient</th>
         <th colspan="3">8. gradient filled</th>
     </tr>
     <tr align="center">
-        <td colspan="3"><img src="/report/img/7_gradient.png" style="zoom: 50%" /></td>
-        <td colspan="3"><img src="/report/img/8_gradient_filled.png" style="zoom: 50%" /></td>
+        <td colspan="3"><img src="/report/img/7_gradient.png" width="300" /></td>
+        <td colspan="3"><img src="/report/img/8_gradient_filled.png" width="300" /></td>
     </tr>
     <tr align="center">
     	<th colspan="6">7. result</th>
     </tr>
     <tr align="center">
-    	<td colspan="6"><img src="/report/img/9_result.png" style="zoom: 80%;" /></td>
+    	<td colspan="6"><img src="/report/img/9_result.png" width="650" /></td>
     </tr>
 </table>
 
