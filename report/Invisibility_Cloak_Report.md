@@ -123,9 +123,9 @@
         <th colspan="2">3. optical flow</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="1_color.png" /></td>
-        <td colspan="2"><img src="2_mask.png" /></td>
-        <td colspan="2"><img src="3_optical_flow.png" /></td>
+        <td colspan="2"><img src="/img/1_color.png" /></td>
+        <td colspan="2"><img src="/img/2_mask.png" /></td>
+        <td colspan="2"><img src="/img/3_optical_flow.png" /></td>
     </tr>
     <tr align="center">
     	<th colspan="2">4. canny edge</th>
@@ -133,23 +133,23 @@
         <th colspan="2">6. flow completion</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="4_canny_edge.png" /></td>
-        <td colspan="2"><img src="5_edge_completion.png" /></td>
-        <td colspan="2"><img src="6_flow_completion.png" /></td>
+        <td colspan="2"><img src="/img/4_canny_edge.png" /></td>
+        <td colspan="2"><img src="/img/5_edge_completion.png" /></td>
+        <td colspan="2"><img src="/img/6_flow_completion.png" /></td>
     </tr>
     <tr align="center">
     	<th colspan="3">7. gradient</th>
         <th colspan="3">8. gradient filled</th>
     </tr>
     <tr align="center">
-        <td colspan="3"><img src="7_gradient.png" style="zoom: 60%" /></td>
-        <td colspan="3"><img src="8_gradient_filled.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="/img/7_gradient.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="/img/8_gradient_filled.png" style="zoom: 60%" /></td>
     </tr>
     <tr align="center">
     	<th colspan="6">7. result</th>
     </tr>
     <tr align="center">
-    	<td colspan="6"><img src="9_result.png" style="zoom: 80%;" /></td>
+    	<td colspan="6"><img src="/img/9_result.png" style="zoom: 80%;" /></td>
     </tr>
 </table>
 
