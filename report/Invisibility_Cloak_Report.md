@@ -145,8 +145,8 @@
         <th colspan="3">8. gradient filled</th>
     </tr>
     <tr align="center">
-        <td colspan="3"><img src="/report/img/7_gradient.png" style="zoom: 60%" /></td>
-        <td colspan="3"><img src="/report/img/8_gradient_filled.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="/report/img/7_gradient.png" style="zoom: 50%" /></td>
+        <td colspan="3"><img src="/report/img/8_gradient_filled.png" style="zoom: 50%" /></td>
     </tr>
     <tr align="center">
     	<th colspan="6">7. result</th>
