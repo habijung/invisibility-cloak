@@ -44,7 +44,7 @@
 
 ### 3.1. 개요
 
-**Image Inpainting** **(이미지 복원)**은 마스크 영역의 주변을 인식하고 새로운 내용을 생성하여 마스크 영역을 재구성하고 복원하는 작업이다. 손상된 이미지의 복원, 특정 대상 제거, 워터마크 및 로고 제거 등 많은 부분에서 활용할 수 있으며, 생성된 내용은 자연스럽고 어색하지 않아야 한다.
+<b>Image Inpainting (이미지 복원)</b>은 마스크 영역의 주변을 인식하고 새로운 내용을 생성하여 마스크 영역을 재구성하고 복원하는 작업이다. 손상된 이미지의 복원, 특정 대상 제거, 워터마크 및 로고 제거 등 많은 부분에서 활용할 수 있으며, 생성된 내용은 자연스럽고 어색하지 않아야 한다.
 
 이 과제에서는 특정 색으로 마스킹 된 비디오에서 [FGVC](https://github.com/vt-vl-lab/FGVC) 딥러닝 모델을 활용하여 motion flow edge를 예측하여 연결하고, gradient domain의 합성으로 주변 배경을 복원한 이미지를 생성하여 비디오에 적용하는 invisibility cloak video inpainting을 구현할 것이다.
 
@@ -91,15 +91,17 @@
 ### 4.1. Overview
 
 1. **HSV Conversion**
-
    - Color 비디오를 HSV 채널로 변환하고 필요한 부분을 마스크 처리한다.
+<br>
 2. **Edge-guided Flow Completion**
    - **Flow computation** : FlowNet 2.0을 기반으로 하는 RAFT 모델을 활용하여 color 비디오를 optical color flow field로 변환한다.
    - **Flow edge completion** : Canny Edge Detector를 활용하여 optical flow에서 마스킹 된 영역에 대해 EdgeConnect 모델을 활용하여 motion edge flow를 완성한다.
    - **Flow completion** : 완성된 motion edge flow를 기존의 optical flow에 합성한다.
+<br>
 3. **Non-local Temporal Neighbors Completion**
    - Non-local 프레임3개를 추가로 생성하고 원래 프레임에서 missing region 를 non-local 프레임을 통해 계산한다.
    - `get_flowNN.py` & `get_flowNN_gradient.py` 에서 연산한다.
+<br>
 4. **Fusing Temporal Neighbors Completion**
    - **Gradient-domain processing** : 색상값을 그대로 사용하면 빛, 그림자 등의 문제로 visible seam이 발생하기 때문에 color gradients를 계산하고, 최종 이미지 합성에 Poisson blending을 활용한다.
    - `--seamless` 옵션에 따라 `get_flowNN.py` & `get_flowNN_gradient.py` 의 모듈 사용을 결정한다.
@@ -115,31 +117,39 @@
 ### 5.1. Result Image
 
 <table>
-    <tr align="center">
-    	<th>1. color</th>
-        <th>2. mask</th>
-        <th>3. optical flow</th>
+    <tr colspane="6" align="center">
+    	<th colspan="2">1. color</th>
+        <th colspan="2">2. mask</th>
+        <th colspan="2">3. optical flow</th>
     </tr>
     <tr align="center">
-        <td><img src=".\1_color.png" /></td>
-        <td><img src=".\2_mask.png" /></td>
-        <td><img src=".\3_optical_flow.png" /></td>
+        <td colspan="2"><img src="1_color.png" /></td>
+        <td colspan="2"><img src="2_mask.png" /></td>
+        <td colspan="2"><img src="3_optical_flow.png" /></td>
     </tr>
     <tr align="center">
-    	<th>4. canny edge</th>
-        <th>5. edge completion</th>
-        <th>6. flow completion</th>
+    	<th colspan="2">4. canny edge</th>
+        <th colspan="2">5. edge completion</th>
+        <th colspan="2">6. flow completion</th>
     </tr>
     <tr align="center">
-        <td><img src=".\4_canny_edge.png" /></td>
-        <td><img src=".\5_edge_completion.png" /></td>
-        <td><img src=".\6_flow_completion.png" /></td>
+        <td colspan="2"><img src="4_canny_edge.png" /></td>
+        <td colspan="2"><img src="5_edge_completion.png" /></td>
+        <td colspan="2"><img src="6_flow_completion.png" /></td>
     </tr>
     <tr align="center">
-    	<th colspan="3">7. result</th>
+    	<th colspan="3">7. gradient</th>
+        <th colspan="3">8. gradient filled</th>
     </tr>
     <tr align="center">
-    	<td colspan="3"><img src=".\7_result.png" style="zoom: 80%;" /></td>
+        <td colspan="3"><img src="7_gradient.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="8_gradient_filled.png" style="zoom: 60%" /></td>
+    </tr>
+    <tr align="center">
+    	<th colspan="6">7. result</th>
+    </tr>
+    <tr align="center">
+    	<td colspan="6"><img src="9_result.png" style="zoom: 80%;" /></td>
     </tr>
 </table>
 
