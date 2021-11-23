@@ -93,15 +93,18 @@
 1. **HSV Conversion**
    - Color 비디오를 HSV 채널로 변환하고 필요한 부분을 마스크 처리한다.
 <br>
+
 2. **Edge-guided Flow Completion**
    - **Flow computation** : FlowNet 2.0을 기반으로 하는 RAFT 모델을 활용하여 color 비디오를 optical color flow field로 변환한다.
    - **Flow edge completion** : Canny Edge Detector를 활용하여 optical flow에서 마스킹 된 영역에 대해 EdgeConnect 모델을 활용하여 motion edge flow를 완성한다.
    - **Flow completion** : 완성된 motion edge flow를 기존의 optical flow에 합성한다.
 <br>
+
 3. **Non-local Temporal Neighbors Completion**
    - Non-local 프레임3개를 추가로 생성하고 원래 프레임에서 missing region 를 non-local 프레임을 통해 계산한다.
    - `get_flowNN.py` & `get_flowNN_gradient.py` 에서 연산한다.
 <br>
+
 4. **Fusing Temporal Neighbors Completion**
    - **Gradient-domain processing** : 색상값을 그대로 사용하면 빛, 그림자 등의 문제로 visible seam이 발생하기 때문에 color gradients를 계산하고, 최종 이미지 합성에 Poisson blending을 활용한다.
    - `--seamless` 옵션에 따라 `get_flowNN.py` & `get_flowNN_gradient.py` 의 모듈 사용을 결정한다.
@@ -123,9 +126,9 @@
         <th colspan="2">3. optical flow</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="/img/1_color.png" /></td>
-        <td colspan="2"><img src="/img/2_mask.png" /></td>
-        <td colspan="2"><img src="/img/3_optical_flow.png" /></td>
+        <td colspan="2"><img src="/report/img/1_color.png" /></td>
+        <td colspan="2"><img src="/report/img/2_mask.png" /></td>
+        <td colspan="2"><img src="/report/img/3_optical_flow.png" /></td>
     </tr>
     <tr align="center">
     	<th colspan="2">4. canny edge</th>
@@ -133,23 +136,23 @@
         <th colspan="2">6. flow completion</th>
     </tr>
     <tr align="center">
-        <td colspan="2"><img src="/img/4_canny_edge.png" /></td>
-        <td colspan="2"><img src="/img/5_edge_completion.png" /></td>
-        <td colspan="2"><img src="/img/6_flow_completion.png" /></td>
+        <td colspan="2"><img src="/report/img/4_canny_edge.png" /></td>
+        <td colspan="2"><img src="/report/img/5_edge_completion.png" /></td>
+        <td colspan="2"><img src="/report/img/6_flow_completion.png" /></td>
     </tr>
     <tr align="center">
     	<th colspan="3">7. gradient</th>
         <th colspan="3">8. gradient filled</th>
     </tr>
     <tr align="center">
-        <td colspan="3"><img src="/img/7_gradient.png" style="zoom: 60%" /></td>
-        <td colspan="3"><img src="/img/8_gradient_filled.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="/report/img/7_gradient.png" style="zoom: 60%" /></td>
+        <td colspan="3"><img src="/report/img/8_gradient_filled.png" style="zoom: 60%" /></td>
     </tr>
     <tr align="center">
     	<th colspan="6">7. result</th>
     </tr>
     <tr align="center">
-    	<td colspan="6"><img src="/img/9_result.png" style="zoom: 80%;" /></td>
+    	<td colspan="6"><img src="/report/img/9_result.png" style="zoom: 80%;" /></td>
     </tr>
 </table>
 
