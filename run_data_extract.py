@@ -49,9 +49,9 @@ def main(argv):
     video = cv2.VideoCapture(camDevice)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     resolution = (640, 480)
-    out = cv2.VideoWriter('output.mp4', fourcc, 30.0, resolution)
-    out_mask = cv2.VideoWriter('output_mask.mp4', fourcc, 30.0, resolution)
-    out_result = cv2.VideoWriter('output_result.mp4', fourcc, 30.0, resolution)
+    out = cv2.VideoWriter('capture_color.mp4', fourcc, 30.0, resolution)
+    out_mask = cv2.VideoWriter('capture_mask.mp4', fourcc, 30.0, resolution)
+    out_result = cv2.VideoWriter('capture_result.mp4', fourcc, 30.0, resolution)
 
     # Capture background image.
     time.sleep(2)
@@ -123,23 +123,20 @@ def main(argv):
             # img[np.where(mask == 255)] = background[np.where(mask == 255)]
             
             # Mask overlapping.
-            # res1 -> background  mask | res2 -> img - mask
+            # res1 -> background ∩ mask | res2 -> img - mask
             mask_inv = cv2.bitwise_not(mask)
             res1 = cv2.bitwise_and(background, background, mask=mask)
             res2 = cv2.bitwise_and(img, img, mask=mask_inv)
 
             imgBlank = np.zeros((100, 100), np.uint8)
             imgResult = cv2.addWeighted(res1, 1, res2, 1, 0)
-            imgStack  = ftn.stackImages(0.7, ([img, mask, imgBlank], [res1, res2, imgResult]))
-            # imgStack2  = ftn.stackImages(0.7, ([res1, res2], [imgResult, imgBlank]))
+            imgStack  = ftn.stackImages(0.7, ([img, imgHSV, mask], [res1, res2, imgResult]))
 
 
             # Only display the image if it is not empty
             if ret:
                 frame, prevTime, strFPS = ftn.videoText(imgStack, frame, baseTime, prevTime, strRun, strFPS)
-                # frame, prevTime, strFPS = ftn.videoText(imgStack2, frame, baseTime, prevTime, strRun, strFPS)
                 cv2.imshow("Result", imgStack)
-                # cv2.imshow("Result2", imgStack2)
 
                 out.write(img)
                 out_mask.write(cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB))
