@@ -11,10 +11,10 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 
 # Result
 
-### ✔ [Youtube](https://youtu.be/G4LIoRuKcas) | [Report (Kor)](/report/Invisibility_Cloak_Report.md)
+### ✔ [Youtube](https://youtu.be/G4LIoRuKcas) | [Report (Kor)](/result/Invisibility_Cloak_Report.md)
 
 <div align="center">
-    <img src="/report/f250_compare-min.gif">
+    <img src="https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/f250_compare_min.gif">
 </div>
 
 
@@ -36,7 +36,10 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 
 # Usage
 
-Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
+- Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
+- Prepare video sequences dataset of color and mask for project.
+  (Data Samples : [tennis](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/data_tennis.zip) | [f250](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/data_f250.zip))
+- Run project
 
 ```sh
 # Remove __pycache__.
@@ -44,36 +47,43 @@ $ find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 # Run video inpainting.
 $ python run_inpainting.py \
->> --path './data/{input}' \
->> --path_mask './data/{mask}' \
->> --outroot './data/{output}' \
->> --merge \
->> --run
+> --path './data/tennis_color' \
+> --path_mask './data/tennis_mask' \
+> --outroot './data/tennis_result' \
+> --merge \
+> --run
 ```
 
 
 # Update History
 
+### v1.3
+
+- Add to remove object with [FGVC](https://github.com/vt-vl-lab/FGVC)
+- Set the main cloak color with **RED**
+- Update cloak mask and noise.
+- Rename **ftn -> image_stack**.
+
 ### v1.2
 
-- Add to save output video
+- Add to save output video.
 - Add color selection mode : **RED || GREEN**
-- Get object removal result by [FGVC](https://github.com/vt-vl-lab/FGVC)
+- Get object removal result by [FGVC](https://github.com/vt-vl-lab/FGVC).
 
 ### v1.1
 
-- Add specific noise filtering conditions
+- Add specific noise filtering conditions.
 - Modify detected color : **RED -> GREEN**
 
 ### v1.0
 
-- Project first commit
-- Test module **ftn** for showing image stack view
-- Test **HSV Detector** using track bar
+- Project first commit.
+- Test module **ftn** for showing image stack view.
+- Test **HSV Detector** using track bar.
 - Test **Invisibility Cloak** Demo.
 
 
 <br>
 
 ---
-**Updated :** 2021-11-27 19:29
+**Updated :** 2021-11-28 00:19
