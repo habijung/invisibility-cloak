@@ -36,15 +36,17 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 
 # Usage
 
+Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
+
 ```sh
 # Remove __pycache__.
 $ find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 # Run video inpainting.
 $ python run_inpainting.py \
->> --path 'D:/_data/f250_color' \
->> --path_mask 'D:/_data/f250_mask' \
->> --outroot 'D:/_data/f250_result_final' \
+>> --path './data/{input}' \
+>> --path_mask './data/{mask}' \
+>> --outroot './data/{output}' \
 >> --merge \
 >> --run
 ```
@@ -74,4 +76,4 @@ $ python run_inpainting.py \
 <br>
 
 ---
-**Updated :** 2021-11-27 03:25
+**Updated :** 2021-11-27 19:29
