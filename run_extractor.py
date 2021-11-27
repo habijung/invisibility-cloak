@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import sys
 import time
-from modules import ftn
+from modules import image_stack
 
 
 # Functions
@@ -22,7 +22,7 @@ def init():
     strFormat = "%-13s%-35s%2s"
     print("=" * 50)
     print("%s%48s" % ("==", "=="))
-    print(strFormat % ("==", "Invisible Cloak Project", "=="))
+    print(strFormat % ("==", "Invisibility Cloak Project", "=="))
     print(strFormat % ("==", "Project ver. : v1.3", "=="))
     print(strFormat % ("==", "Python ver.  : " + pyVersion, "=="))
     print(strFormat % ("==", "OpenCV ver.  : " + cv2.__version__, "=="))
@@ -130,12 +130,12 @@ def main(argv):
 
             imgBlank = np.zeros((100, 100), np.uint8)
             imgResult = cv2.addWeighted(res1, 1, res2, 1, 0)
-            imgStack  = ftn.stackImages(0.7, ([img, imgHSV, mask], [res1, res2, imgResult]))
+            imgStack  = image_stack.stackImages(0.7, ([img, imgHSV, mask], [res1, res2, imgResult]))
 
 
             # Only display the image if it is not empty
             if ret:
-                frame, prevTime, strFPS = ftn.videoText(imgStack, frame, baseTime, prevTime, strRun, strFPS)
+                frame, prevTime, strFPS = image_stack.videoText(imgStack, frame, baseTime, prevTime, strRun, strFPS)
                 cv2.imshow("Result", imgStack)
 
                 out.write(img)

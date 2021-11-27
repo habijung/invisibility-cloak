@@ -16,7 +16,7 @@ from PIL import Image
 from skimage.feature import canny
 
 # Custom
-import edgeconnect.utils
+import modules.EdgeConnect.utils
 import PIL.ImageOps
 import shutil
 import skimage.io
@@ -25,23 +25,22 @@ import warnings
 from logging import warning as warn
 
 # RAFT
-from RAFT import utils
-from RAFT import RAFT
+from modules.RAFT import utils
+from modules.RAFT import RAFT
 
 # EdgeConnect
-from edgeconnect.networks import EdgeGenerator_
+from modules.EdgeConnect.networks import EdgeGenerator_
 
-# tool
-from tool.get_flowNN import get_flowNN
-from tool.get_flowNN_gradient import get_flowNN_gradient
-from tool.spatial_inpaint import spatial_inpaint
-from tool.frame_inpaint import DeepFillv1
+# tools
+from modules.frame_inpaint import DeepFillv1
+from modules.get_flowNN_gradient import get_flowNN_gradient
+from modules.spatial_inpaint import spatial_inpaint
 
 # utils
-import utils.region_fill as rf
-from utils.Poisson_blend import Poisson_blend
-from utils.Poisson_blend_img import Poisson_blend_img
-from utils.common_utils import flow_edge
+from modules.utils.common_utils import flow_edge
+from modules.utils.Poisson_blend import Poisson_blend
+from modules.utils.Poisson_blend_img import Poisson_blend_img
+import modules.utils.region_fill as rf
 
 
 # Custom root warnings.
@@ -51,6 +50,7 @@ def _precision_warn(p1, p2, extra=""):
         "Convert image to {} prior to saving to suppress this warning."
     )
     warn(msg.format(p1, p2, extra, p2))
+
 
 def silence_imageio_warning(*args, **kwarge):
     pass
@@ -129,6 +129,7 @@ def calculate_flow(args, model, video, mode):
             print("Loading {0}".format(flow_name), '\r', end='')
             flow = utils.frame_utils.readFlow(flow_name)
             Flow = np.concatenate((Flow, flow[..., None]), axis=-1)
+            
         return Flow
 
     create_dir(os.path.join(args.outroot, '1_flow', mode + '_flo'))
@@ -161,7 +162,7 @@ def calculate_flow(args, model, video, mode):
             flow_img.save(os.path.join(args.outroot, '1_flow', mode + '_png', '%05d.png'%i))
             utils.frame_utils.writeFlow(os.path.join(args.outroot, '1_flow', mode + '_flo', '%05d.flo'%i), flow)
 
-            # Convert image to gif
+            # Convert image to gif.
             flow_gif.append(imageio.imread(os.path.join(args.outroot, '1_flow', mode + '_png', '%05d.png' % i)))
 
         # Save gif.
@@ -171,7 +172,7 @@ def calculate_flow(args, model, video, mode):
 
 
 def edge_completion(args, EdgeGenerator, corrFlow, flow_mask, mode):
-    """2. Calculate flow edge and complete it.
+    """2 ~ 3. Calculate flow edge and complete it.
     """   
 
     if mode not in ['forward', 'backward']:
@@ -186,6 +187,7 @@ def edge_completion(args, EdgeGenerator, corrFlow, flow_mask, mode):
             print("Loading {0}".format(edge_name), '\r', end='')
             edge = np.load(edge_name)
             Edge = np.concatenate((Edge, edge[..., None]), axis=-1)
+            
         return Edge
 
     create_dir(os.path.join(args.outroot, '2_edge_canny', mode + '_png'))
@@ -260,7 +262,7 @@ def edge_completion(args, EdgeGenerator, corrFlow, flow_mask, mode):
 
 
 def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
-    """3. Completes flow.
+    """4. Completes flow.
     """
     if mode not in ['forward', 'backward']:
         raise NotImplementedError
@@ -270,10 +272,12 @@ def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
     # If already exist flow_comp, load and return.
     if os.path.isdir(os.path.join(args.outroot, '4_flow_comp', mode + '_flo')):
         compFlow = np.empty(((imgH, imgW, 2, 0)), dtype=np.float32)
+        
         for flow_name in sorted(glob.glob(os.path.join(args.outroot, '4_flow_comp', mode + '_flo', '*.flo'))):
             print("Loading {0}".format(flow_name), '\r', end='')
             flow = utils.frame_utils.readFlow(flow_name)
             compFlow = np.concatenate((compFlow, flow[..., None]), axis=-1)
+            
         return compFlow
 
     create_dir(os.path.join(args.outroot, '4_flow_comp', mode + '_flo'))
@@ -317,7 +321,7 @@ def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
         flow_img = utils.flow_viz.flow_to_image(compFlow[:, :, :, i])
         flow_img = Image.fromarray(flow_img)
 
-        # Saves the flow and flow_img.
+        # Save the flow and flow_img.
         flow_img.save(os.path.join(args.outroot, '4_flow_comp', mode + '_png', '%05d.png'%i))
         utils.frame_utils.writeFlow(os.path.join(args.outroot, '4_flow_comp', mode + '_flo', '%05d.flo'%i), compFlow[:, :, :, i])
 
@@ -328,122 +332,6 @@ def complete_flow(args, corrFlow, flow_mask, mode, edge=None):
     imageio.mimsave(os.path.join(args.outroot, '0_process', '4_flow_comp_' + mode + '.gif'), flow_comp_gif, format='gif', fps=20)
 
     return compFlow
-
-
-def video_completion(args):
-
-    # Flow model.
-    RAFT_model = initialize_RAFT(args)
-
-    # Loads frames.
-    filename_list = glob.glob(os.path.join(args.path, '*.png')) + \
-                    glob.glob(os.path.join(args.path, '*.jpg'))
-
-    # Obtains imgH, imgW and nFrame.
-    imgH, imgW = np.array(Image.open(filename_list[0])).shape[:2]
-    nFrame = len(filename_list)
-    print('Image Size : {0} x {1} x {2} frames'.format(imgH, imgW, nFrame))
-
-    # Loads video.
-    video = []
-    for filename in sorted(filename_list):
-        video.append(torch.from_numpy(np.array(Image.open(filename)).astype(np.uint8)[..., :3]).permute(2, 0, 1).float())
-
-    video = torch.stack(video, dim=0)
-    video = video.to('cuda')
-
-    # Calcutes the corrupted flow.
-    corrFlowF = calculate_flow(args, RAFT_model, video, 'forward')
-    corrFlowB = calculate_flow(args, RAFT_model, video, 'backward')
-    print('\nFinish flow prediction.')
-
-    # Makes sure video is in BGR (opencv) format.
-    video = video.permute(2, 3, 1, 0).cpu().numpy()[:, :, ::-1, :] / 255.
-
-    '''Object removal without seamless
-    '''
-    # Loads masks.
-    filename_list = glob.glob(os.path.join(args.path_mask, '*.png')) + \
-                    glob.glob(os.path.join(args.path_mask, '*.jpg'))
-
-    mask = []
-    flow_mask = []
-    for filename in sorted(filename_list):
-        mask_img = np.array(Image.open(filename).convert('L'))
-        mask.append(mask_img)
-
-        # Dilate 15 pixel so that all known pixel is trustworthy
-        flow_mask_img = scipy.ndimage.binary_dilation(mask_img, iterations=15)
-        # Close the small holes inside the foreground objects
-        flow_mask_img = cv2.morphologyEx(flow_mask_img.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((21, 21),np.uint8)).astype(np.bool)
-        flow_mask_img = scipy.ndimage.binary_fill_holes(flow_mask_img).astype(np.bool)
-        flow_mask.append(flow_mask_img)
-
-    # mask indicating the missing region in the video.
-    mask = np.stack(mask, -1).astype(np.bool)
-    flow_mask = np.stack(flow_mask, -1).astype(np.bool)
-
-    if args.edge_guide:
-        # Edge completion model.
-        EdgeGenerator = EdgeGenerator_()
-        EdgeComp_ckpt = torch.load(args.edge_completion_model)
-        EdgeGenerator.load_state_dict(EdgeComp_ckpt['generator'])
-        EdgeGenerator.to(torch.device('cuda:0'))
-        EdgeGenerator.eval()
-
-        # Edge completion.
-        FlowF_edge = edge_completion(args, EdgeGenerator, corrFlowF, flow_mask, 'forward')
-        FlowB_edge = edge_completion(args, EdgeGenerator, corrFlowB, flow_mask, 'backward')
-        print('\nFinish edge completion.')
-    else:
-        FlowF_edge, FlowB_edge = None, None
-
-    # Completes the flow.
-    videoFlowF = complete_flow(args, corrFlowF, flow_mask, 'forward', FlowF_edge)
-    videoFlowB = complete_flow(args, corrFlowB, flow_mask, 'backward', FlowB_edge)
-    print('\nFinish flow completion.')
-    
-    #return
-    iter = 0
-    mask_tofill = mask
-    video_comp = video
-
-    # Image inpainting model.
-    deepfill = DeepFillv1(pretrained_model=args.deepfill_model, image_shape=[imgH, imgW])
-
-    # We iteratively complete the video.
-    while(np.sum(mask_tofill) > 0):
-        create_dir(os.path.join(args.outroot, '5_frame_comp_' + str(iter)))
-
-        # Color propagation.
-        video_comp, mask_tofill, _ = get_flowNN(args,
-                                      video_comp,
-                                      mask_tofill,
-                                      videoFlowF,
-                                      videoFlowB,
-                                      None,
-                                      None)
-
-        for i in range(nFrame):
-            mask_tofill[:, :, i] = scipy.ndimage.binary_dilation(mask_tofill[:, :, i], iterations=2)
-            img = video_comp[:, :, :, i] * 255
-            # Green indicates the regions that are not filled yet.
-            img[mask_tofill[:, :, i]] = [0, 255, 0]
-            cv2.imwrite(os.path.join(args.outroot, '5_frame_comp_' + str(iter), '%05d.png'%i), img)
-
-        # video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
-        # imageio.mimwrite(os.path.join(args.outroot, 'frame_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=12, quality=8, macro_block_size=1)
-        # imageio.mimsave(os.path.join(args.outroot, 'frame_comp_' + str(iter), 'intermediate_{0}.gif'.format(str(iter))), video_comp_, format='gif', fps=12)
-        mask_tofill, video_comp = spatial_inpaint(deepfill, mask_tofill, video_comp)
-        iter += 1
-
-    create_dir(os.path.join(args.outroot, '5_frame_comp_' + 'final'))
-    video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
-    for i in range(nFrame):
-        img = video_comp[:, :, :, i] * 255
-        cv2.imwrite(os.path.join(args.outroot, '5_frame_comp_' + 'final', '%05d.png'%i), img)
-        imageio.mimwrite(os.path.join(args.outroot, '5_frame_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
-        imageio.mimsave(os.path.join(args.outroot, '0_process', '5_frame_comp_final.gif'), video_comp_, format='gif', fps=20)
 
 
 def video_completion_seamless(args):
@@ -504,20 +392,17 @@ def video_completion_seamless(args):
     mask_dilated = np.stack(mask_dilated, -1).astype(np.bool)
     flow_mask = np.stack(flow_mask, -1).astype(np.bool)
 
-    if args.edge_guide:
-        # Edge completion model.
-        EdgeGenerator = EdgeGenerator_()
-        EdgeComp_ckpt = torch.load(args.edge_completion_model)
-        EdgeGenerator.load_state_dict(EdgeComp_ckpt['generator'])
-        EdgeGenerator.to(torch.device('cuda:0'))
-        EdgeGenerator.eval()
+    # Edge completion model.
+    EdgeGenerator = EdgeGenerator_()
+    EdgeComp_ckpt = torch.load(args.edge_model)
+    EdgeGenerator.load_state_dict(EdgeComp_ckpt['generator'])
+    EdgeGenerator.to(torch.device('cuda:0'))
+    EdgeGenerator.eval()
 
-        # Edge completion.
-        FlowF_edge = edge_completion(args, EdgeGenerator, corrFlowF, flow_mask, 'forward')
-        FlowB_edge = edge_completion(args, EdgeGenerator, corrFlowB, flow_mask, 'backward')
-        print('\nFinish edge completion.')
-    else:
-        FlowF_edge, FlowB_edge = None, None
+    # Edge completion.
+    FlowF_edge = edge_completion(args, EdgeGenerator, corrFlowF, flow_mask, 'forward')
+    FlowB_edge = edge_completion(args, EdgeGenerator, corrFlowB, flow_mask, 'backward')
+    print('\nFinish edge completion.')
 
     # Completes the flow.
     videoFlowF = complete_flow(args, corrFlowF, flow_mask, 'forward', FlowF_edge)
@@ -546,8 +431,8 @@ def video_completion_seamless(args):
     
     else:
         create_dir(os.path.join(args.outroot, '5_gradient', 'x_npy'))
-        create_dir(os.path.join(args.outroot, '5_gradient', 'y_npy'))
         create_dir(os.path.join(args.outroot, '5_gradient', 'x_png'))
+        create_dir(os.path.join(args.outroot, '5_gradient', 'y_npy'))
         create_dir(os.path.join(args.outroot, '5_gradient', 'y_png'))
         grad_x_gif = []
         grad_y_gif = []
@@ -579,7 +464,7 @@ def video_completion_seamless(args):
             # print("grad_x shape: {}, dimension: {}".format(grad_x.shape, grad_x.ndim))
             # print("grad_y shape: {}, dimension: {}".format(grad_y.shape, grad_y.ndim))
             
-            # Conveert image to gif.
+            # Convert image to gif.
             grad_x_gif.append(imageio.imread(os.path.join(args.outroot, '5_gradient', 'x_png', '%05d.png' % indFrame)))
             grad_y_gif.append(imageio.imread(os.path.join(args.outroot, '5_gradient', 'y_png', '%05d.png' % indFrame)))
             
@@ -599,13 +484,11 @@ def video_completion_seamless(args):
     # Image inpainting model.
     deepfill = DeepFillv1(pretrained_model=args.deepfill_model, image_shape=[imgH, imgW])
 
-    
     # We iteratively complete the video.
     while(np.sum(mask) > 0):
-        create_dir(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter)))
+        create_dir(os.path.join(args.outroot, '7_frame_seamless_comp_' + str(iter)))
 
         # Gradient propagation.
-        
         gradient_x_filled, gradient_y_filled, mask_gradient = \
             get_flowNN_gradient(args,
                                 gradient_x_filled,
@@ -617,34 +500,40 @@ def video_completion_seamless(args):
                                 None,
                                 None)
         
-        create_dir(os.path.join(args.outroot, '6_gradient', 'x_png'))
-        create_dir(os.path.join(args.outroot, '6_gradient', 'y_png'))
-            
-        for indFrame in range(nFrame):
-            grad_x_filled = gradient_x_filled[:, :, 0, indFrame]
-            grad_y_filled = gradient_y_filled[:, :, 0, indFrame]
-            skimage.io.imsave(os.path.join(args.outroot, '6_gradient', 'x_png', '%05d.png' % indFrame), grad_x_filled)
-            skimage.io.imsave(os.path.join(args.outroot, '6_gradient', 'y_png', '%05d.png' % indFrame), grad_y_filled)
-
+        create_dir(os.path.join(args.outroot, '6_gradient_filled', 'x_png'))
+        create_dir(os.path.join(args.outroot, '6_gradient_filled', 'y_png'))
+        grad_x_filled_gif = []
+        grad_y_filled_gif = []
 
         # if there exist holes in mask, Poisson blending will fail. So I did this trick. I sacrifice some value. Another solution is to modify Poisson blending.
         for indFrame in range(nFrame):
             mask_gradient[:, :, indFrame] = scipy.ndimage.binary_fill_holes(mask_gradient[:, :, indFrame]).astype(np.bool)
+            
+            # Save the gradient filled img.
+            grad_x_filled = gradient_x_filled[:, :, 0, indFrame]
+            grad_y_filled = gradient_y_filled[:, :, 0, indFrame]
+            skimage.io.imsave(os.path.join(args.outroot, '6_gradient_filled', 'x_png', '%05d.png' % indFrame), grad_x_filled)
+            skimage.io.imsave(os.path.join(args.outroot, '6_gradient_filled', 'y_png', '%05d.png' % indFrame), grad_y_filled)
+            
+            # Convert image to gif.
+            grad_x_filled_gif.append(imageio.imread(os.path.join(args.outroot, '6_gradient_filled', 'x_png', '%05d.png' % indFrame)))
+            grad_y_filled_gif.append(imageio.imread(os.path.join(args.outroot, '6_gradient_filled', 'y_png', '%05d.png' % indFrame)))
 
+        # Save gif.
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '6_gradient_filled' + 'x.gif'), grad_x_filled_gif, format='gif', fps=20)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '6_gradient_filled' + 'y.gif'), grad_y_filled_gif, format='gif', fps=20)
+        
         # After one gradient propagation iteration
         # gradient --> RGB
         for indFrame in range(nFrame):
             print("Poisson blending frame {0:3d}".format(indFrame))
 
             if mask[:, :, indFrame].sum() > 0:
-                '''    
                 try:
                     frameBlend, UnfilledMask = Poisson_blend_img(video_comp[:, :, :, indFrame], gradient_x_filled[:, 0 : imgW - 1, :, indFrame], gradient_y_filled[0 : imgH - 1, :, :, indFrame], mask[:, :, indFrame], mask_gradient[:, :, indFrame])
-                    UnfilledMask = scipy.ndimage.binary_fill_holes(UnfilledMask).astype(np.bool)
+                    # UnfilledMask = scipy.ndimage.binary_fill_holes(UnfilledMask).astype(np.bool)
                 except:
                     frameBlend, UnfilledMask = video_comp[:, :, :, indFrame], mask[:, :, indFrame]
-                '''
-                frameBlend, UnfilledMask = video_comp[:, :, :, indFrame], mask[:, :, indFrame]
 
                 frameBlend = np.clip(frameBlend, 0, 1.0)
                 tmp = cv2.inpaint((frameBlend * 255).astype(np.uint8), UnfilledMask.astype(np.uint8), 3, cv2.INPAINT_TELEA).astype(np.float32) / 255.
@@ -659,12 +548,12 @@ def video_completion_seamless(args):
             else:
                 frameBlend_ = video_comp[:, :, :, indFrame]
 
-            cv2.imwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), '%05d.png'%indFrame), frameBlend_ * 255.)
+            cv2.imwrite(os.path.join(args.outroot, '7_frame_seamless_comp_' + str(iter), '%05d.png' % indFrame), frameBlend_ * 255.)
 
         video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
-        # imageio.mimwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=20, quality=8, macro_block_size=1)
-        imageio.mimsave(os.path.join(args.outroot, '6_frame_seamless_comp_' + str(iter), 'intermediate_{0}.gif'.format(str(iter))), video_comp_, format='gif', fps=20)
-        return
+        # imageio.mimwrite(os.path.join(args.outroot, '7_frame_seamless_comp_' + str(iter), 'intermediate_{0}.mp4'.format(str(iter))), video_comp_, fps=20, quality=8, macro_block_size=1)
+        # imageio.mimsave(os.path.join(args.outroot, '7_frame_seamless_comp_' + str(iter), 'intermediate_{0}.gif'.format(str(iter))), video_comp_, format='gif', fps=20)
+        
         mask, video_comp = spatial_inpaint(deepfill, mask, video_comp)
         iter += 1
 
@@ -678,28 +567,45 @@ def video_completion_seamless(args):
             gradient_x_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
             gradient_y_filled[mask_gradient[:, :, indFrame], :, indFrame] = 0
 
-    create_dir(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final'))
+    create_dir(os.path.join(args.outroot, '7_frame_seamless_comp_' + 'final'))
     video_comp_ = (video_comp * 255).astype(np.uint8).transpose(3, 0, 1, 2)[:, :, :, ::-1]
+    
     for i in range(nFrame):
         img = video_comp[:, :, :, i] * 255
-        cv2.imwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final', '%05d.png' % i), img)
-        imageio.mimwrite(os.path.join(args.outroot, '6_frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
-        imageio.mimsave(os.path.join(args.outroot, '0_process', '6_frame_seamless_comp_final.gif'), video_comp_, format='gif', fps=20)
+        cv2.imwrite(os.path.join(args.outroot, '7_frame_seamless_comp_' + 'final', '%05d.png' % i), img)
+        imageio.mimwrite(os.path.join(args.outroot, '7_frame_seamless_comp_' + 'final', 'final.mp4'), video_comp_, fps=20, quality=8, macro_block_size=1)
+        imageio.mimsave(os.path.join(args.outroot, '0_process', '7_frame_seamless_comp_final.gif'), video_comp_, format='gif', fps=20)
 
 
 def args_list(args):
-    print("\n")
-    print("================================================================")
-    print("==                            TEST                            ==")
-    print("================================================================")
-    print("\n")
+    print("=" * 50)
+    print("=" + " " * 48 + "=")
+    print("%-5s%-35s%10s" % ("=", "Invisibility Cloak Project", "="))
+    print("%-5s%-35s%10s" % ("=", "Updated      : 2021.11.27 (Sat.)", "="))
+    print("=" + " " * 48 + "=")
+    print("%-5s%-35s%10s" % ("=", "Project     : v1.3", "="))
+    print("%-5s%-35s%10s" % ("=", "Python      : v3.8.12", "="))
+    print("%-5s%-35s%10s" % ("=", "OpenCV      : v4.5.4", "="))
+    print("%-5s%-35s%10s" % ("=", "PyTorch     : v1.6.0", "="))
+    print("%-5s%-35s%10s" % ("=", "CUDA        : v10.2.89", "="))
+    print("%-5s%-35s%10s" % ("=", "Matplotlib  : v3.4.3", "="))
+    print("%-5s%-35s%10s" % ("=", "Scipy       : v1.6.2", "="))
+    print("=" + " " * 48 + "=")
 
     args_dict = vars(args)
     for key in args_dict:
         val = args_dict[key]
-        print("%s : %s" % (key, val))
-
-    print("")
+        
+        if len(str(key)) > 10:
+            key = str(key)[:7] + "..."
+        
+        if len(str(val)) > 21:
+            val = str(val)[:18] + "..."
+        
+        print("%-5s%-10s%-25s%10s" % ("=", key, "  : " + str(val), "="))
+        
+    print("=" + " " * 48 + "=")
+    print("=" * 50)
 
 
 def main(args):
@@ -707,11 +613,11 @@ def main(args):
         "Accepted modes: 'object_removal', 'video_extrapolation', but input is %s"
     ) % args.mode
 
+    # Custom warnings
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
     imageio.core.util._precision_warn = silence_imageio_warning
 
-    args.edge_guide = True
     args_list(args)
 
     if args.clean:
@@ -719,12 +625,7 @@ def main(args):
 
     if args.run:
         create_dir(os.path.join(args.outroot, '0_process'))
-
-        if args.seamless:
-            # args.outroot = 'D:/_data/tennis_result_seamless'
-            video_completion_seamless(args)
-        else:
-            video_completion(args)
+        video_completion_seamless(args)
 
 
 
@@ -733,13 +634,11 @@ if __name__ == '__main__':
 
     # video completion
     parser.add_argument('--mode', default='object_removal', help="modes: object_removal / video_extrapolation")
-    parser.add_argument('--path', default='D:/_data/tennis', help="dataset for evaluation")
-    parser.add_argument('--path_mask', default='D:/_data/square_mask', help="mask for object removal")
-    parser.add_argument('--outroot', default='D:/_data/tennis_result', help="output directory")
+    parser.add_argument('--path', default='./data/color', help="dataset for evaluation")
+    parser.add_argument('--path_mask', default='./data/mask', help="mask for object removal")
+    parser.add_argument('--outroot', default='./data/result', help="output directory")
 
     # options
-    parser.add_argument('--seamless', action='store_true', help='Whether operate in the gradient domain')
-    parser.add_argument('--edge_guide', action='store_true', help='Whether use edge as guidance to complete flow')
     parser.add_argument('--Nonlocal', dest='Nonlocal', default=False, type=bool)
     parser.add_argument('--alpha', dest='alpha', default=0.1, type=float)
     parser.add_argument('--consistencyThres', dest='consistencyThres', default=np.inf, type=float, help='flow consistency error threshold')
@@ -751,12 +650,12 @@ if __name__ == '__main__':
     parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
 
     # Edge completion
-    parser.add_argument('--edge_completion_model', default='./weight/edge_completion.pth', help="restore checkpoint")
+    parser.add_argument('--edge_model', default='./weight/edge_completion.pth', help="restore checkpoint")
 
     # Deepfill
     parser.add_argument('--deepfill_model', default='./weight/imagenet_deepfill.pth', help="restore checkpoint")
 
-    # custom
+    # Custom
     parser.add_argument('--run', action='store_true', help='run video completion')
     parser.add_argument('--merge', action='store_true', help='merge image canny edge and completed edge')
     parser.add_argument('--clean', action='store_true', help='clear result directory')

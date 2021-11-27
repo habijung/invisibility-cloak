@@ -34,6 +34,22 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 | scipy          | 1.6.2      |
 
 
+# Usage
+
+```sh
+# Remove __pycache__.
+$ find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+
+# Run video inpainting.
+$ python run_inpainting.py \
+>> --path 'D:/_data/f250_color' \
+>> --path_mask 'D:/_data/f250_mask' \
+>> --outroot 'D:/_data/f250_result_final' \
+>> --merge \
+>> --run
+```
+
+
 # Update History
 
 ### v1.2
@@ -58,4 +74,4 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 <br>
 
 ---
-**Updated :** 2021-11-20 22:42
+**Updated :** 2021-11-27 03:25
