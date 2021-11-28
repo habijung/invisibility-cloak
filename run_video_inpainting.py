@@ -368,6 +368,14 @@ def video_completion_seamless(args):
     # Loads masks.
     filename_list = glob.glob(os.path.join(args.path_mask, '*.png')) + \
                     glob.glob(os.path.join(args.path_mask, '*.jpg'))
+                    
+    if args.mode == 'square_removal':
+        tmp_list = []
+        
+        for i in range(nFrame):
+            tmp_list.append(filename_list[0])
+            
+        filename_list = tmp_list
 
     mask = []
     mask_dilated = []
@@ -609,8 +617,8 @@ def args_list(args):
 
 
 def main(args):
-    assert args.mode in ('object_removal', 'video_extrapolation'), (
-        "Accepted modes: 'object_removal', 'video_extrapolation', but input is %s"
+    assert args.mode in ('object_removal', 'square_removal'), (
+        "Accepted modes: 'object_removal', 'square_removal', but input is %s"
     ) % args.mode
 
     # Custom warnings
@@ -633,7 +641,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # video completion
-    parser.add_argument('--mode', default='object_removal', help="modes: object_removal / video_extrapolation")
+    parser.add_argument('--mode', default='object_removal', help="modes: object_removal / square_removal")
     parser.add_argument('--path', default='./data/color', help="dataset for evaluation")
     parser.add_argument('--path_mask', default='./data/mask', help="mask for object removal")
     parser.add_argument('--outroot', default='./data/result', help="output directory")
