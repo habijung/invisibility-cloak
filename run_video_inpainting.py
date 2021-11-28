@@ -386,7 +386,7 @@ def video_completion_seamless(args):
         # Dilate 15 pixel so that all known pixel is trustworthy
         flow_mask_img = scipy.ndimage.binary_dilation(mask_img, iterations=15)
         # Close the small holes inside the foreground objects
-        flow_mask_img = cv2.morphologyEx(flow_mask_img.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((21, 21),np.uint8)).astype(np.bool)
+        # flow_mask_img = cv2.morphologyEx(flow_mask_img.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((21, 21),np.uint8)).astype(np.bool)
         flow_mask_img = scipy.ndimage.binary_fill_holes(flow_mask_img).astype(np.bool)
         flow_mask.append(flow_mask_img)
 
