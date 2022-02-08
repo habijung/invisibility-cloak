@@ -11,7 +11,7 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 
 # Result
 
-### ✔ [Youtube](https://youtu.be/G4LIoRuKcas) | [Report (Kor)](/result/Invisibility_Cloak_Report.md)
+### ✔ [Youtube](https://youtu.be/G4LIoRuKcas) | [Presentation (Kor)](Invisibility_Cloak_Presentation.pdf) | [Report (Kor)](/result/Invisibility_Cloak_Report.md)
 
 <div align="center">
     <img src="/result/v1.3_compare_min.gif">
