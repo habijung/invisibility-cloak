@@ -34,7 +34,9 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 | scipy          | 1.6.2      |
 
 
-# Install
+# Usage
+
+### Install
 
 ```sh
 $ conda create -n (name)
@@ -43,8 +45,7 @@ $ conda install pytorch==1.6.0 torchvision==0.7.0 cudatoolkit=10.2 -c pytorch
 $ pip install matplotlib scipy opencv imageio imageio-ffmpeg scikit-image imutils
 ```
 
-
-# Run Project
+### Run Project
 
 - Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
 - Prepare video sequences dataset of color and mask for project.
