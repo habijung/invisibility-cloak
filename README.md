@@ -44,7 +44,7 @@ $ pip install matplotlib scipy opencv imageio imageio-ffmpeg scikit-image imutil
 ```
 
 
-# Usage
+# Run Project
 
 - Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
 - Prepare video sequences dataset of color and mask for project.
