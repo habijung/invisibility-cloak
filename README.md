@@ -34,6 +34,16 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 | scipy          | 1.6.2      |
 
 
+# Install
+
+```sh
+$ conda create -n (name)
+$ conda activate (name)
+$ conda install pytorch==1.6.0 torchvision==0.7.0 cudatoolkit=10.2 -c pytorch
+$ pip install matplotlib scipy opencv imageio imageio-ffmpeg scikit-image imutils
+```
+
+
 # Usage
 
 - Download and unzip [weight.zip](https://filedn.com/ldHU78JSYWjSTua64JhwbGm/GitHub/invisibility-cloak/weight.zip) into the `modules`.
@@ -42,14 +52,14 @@ For this project, FGVC(Flow-edge Guided Video Completion) deep learning model wa
 - Run project
 
 ```sh
-# Remove __pycache__.
+# Remove __pycache__ if you want.
 $ find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 # Run video inpainting.
 $ python run_inpainting.py \
-> --path './data/tennis_color' \
+> --path      './data/tennis_color' \
 > --path_mask './data/tennis_mask' \
-> --outroot './data/tennis_result' \
+> --outroot   './data/tennis_result' \
 > --merge \
 > --run
 ```
